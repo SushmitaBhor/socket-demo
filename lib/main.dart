@@ -6,27 +6,7 @@ import 'package:logger/logger.dart';
 
 import 'package:socket_chat/chat.dart';
 
-
-
 void main() {
-  var io = Server();
-  var nsp = io.of('/some');
-  nsp.on('connection', (client) {
-    print('connection /some');
-    client.on('chat', (data) {
-
-      print('data from /some => $data');
-      client.emit('fromServer', "ok 2");
-    });
-  });
-  io.on('connection', (client) {
-    print('connection default namespace');
-    client.on('chat', (data) {
-      print('data from default => $data');
-      client.emit('fromServer', "ok");
-    });
-  });
-  io.listen(3000);
   runApp(const MyApp());
 }
 
@@ -45,8 +25,6 @@ class MyApp extends StatelessWidget {
   }
 }
 
-
-
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
 
@@ -60,15 +38,28 @@ class _MyHomePageState extends State<MyHomePage> {
   late socket_io.Socket socketCh;
   TextEditingController messageController = TextEditingController();
 
-
-  List<Chat>  chats =[];
-
-
+  List<Chat> chats = [];
 
   @override
   void initState() {
     super.initState();
+    var io = Server();
+    var nsp = io.of('/some');
+    nsp.on('connection', (client) {
+      client.on('chat', (data) {
+        client.emit('fromServer', "ok 2");
+      });
+    });
+    io.on('connection', (client) {
+      client.on('chat', (data) {
+        setState(() {
+          chats = [Chat.fromJson(data), ...chats];
+        });
 
+        client.emit('fromServer', "ok");
+      });
+    });
+    io.listen(3000);
     socketCh = socket_io.io(
         "http://localhost:3000",
         socket_io.OptionBuilder()
@@ -76,38 +67,24 @@ class _MyHomePageState extends State<MyHomePage> {
             .enableAutoConnect()
             .build());
 
-    // Event listeners.
-    // setupListeners();
+    socketCh.onConnect((_) => Logger().i('connected'));
+    socketCh.onDisconnect((_) => Logger().e('disconnected'));
 
-    socketCh.onConnect( (_) => Logger().i('connected'));
-    socketCh.onDisconnect( (_) => Logger().e('disconnected'));
-
-    socketCh.on('chat',(data){
-
-      print(data);
-      setState(() {chats=[Chat.fromJson(data),...chats];
-
+    socketCh.on('chat', (data) {
+      setState(() {
+        chats = [Chat.fromJson(data), ...chats];
       });
-
     });
-
   }
-
-
 
   void sendMessage() {
     if (messageController.text.isNotEmpty) {
       final chat = Chat(content: messageController.text, time: DateTime.now());
       socketCh.emit('chat', chat.toJson());
-      socketCh.emit('chat',messageController.text);
+      socketCh.emit('chat', messageController.text);
       socketCh.emitWithAck('chat', 'init', ack: (data) {
-        print('ack $data') ;
         if (data != null) {
-
-          print('from server $data');
-        } else {
-          print("Null") ;
-        }
+        } else {}
       });
       messageController.clear();
     }
@@ -136,7 +113,6 @@ class _MyHomePageState extends State<MyHomePage> {
                 itemBuilder: (context, index) {
                   return ListTile(
                     title: Text(chats[index].content),
-                    // title: Text(messages[index]),
                   );
                 },
               ),
@@ -156,7 +132,6 @@ class _MyHomePageState extends State<MyHomePage> {
                   IconButton(
                     icon: Icon(Icons.send),
                     onPressed: () {
-
                       showDialog(
                           context: context,
                           builder: (BuildContext context) {
@@ -171,11 +146,8 @@ class _MyHomePageState extends State<MyHomePage> {
                                 TextButton(
                                   child: Text('Send'),
                                   onPressed: () {
-
                                     sendMessage();
                                     Navigator.of(context).pop();
-
-
                                   },
                                 ),
                                 TextButton(

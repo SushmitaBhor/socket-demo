@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-
 import 'package:socket_io_client/socket_io_client.dart' as socket_io;
 import 'package:socket_io/socket_io.dart';
 import 'package:logger/logger.dart';
-
 import 'package:socket_chat/chat.dart';
 
 void main() {
@@ -38,54 +36,49 @@ class _MyHomePageState extends State<MyHomePage> {
   late socket_io.Socket socketCh;
   TextEditingController messageController = TextEditingController();
 
-  List<Chat> chats = [];
-
+  List<Chat> chats = [] ;
+List<String> messages=[];
   @override
   void initState() {
     super.initState();
-    var io = Server();
-    var nsp = io.of('/some');
-    nsp.on('connection', (client) {
-      client.on('chat', (data) {
-        client.emit('fromServer', "ok 2");
-      });
-    });
-    io.on('connection', (client) {
-      client.on('chat', (data) {
-        setState(() {
-          chats = [Chat.fromJson(data), ...chats];
-        });
-
-        client.emit('fromServer', "ok");
-      });
-    });
-    io.listen(3000);
-    socketCh = socket_io.io(
-        "http://localhost:3000",
-        socket_io.OptionBuilder()
-            .setTransports(['websocket'])
-            .enableAutoConnect()
-            .build());
-
-    socketCh.onConnect((_) => Logger().i('connected'));
-    socketCh.onDisconnect((_) => Logger().e('disconnected'));
-
-    socketCh.on('chat', (data) {
-      setState(() {
-        chats = [Chat.fromJson(data), ...chats];
-      });
-    });
+   createSocketConnection();
   }
+void createSocketConnection(){
+  var io = Server();
+  var nsp = io.of('/some');
+  nsp.on('connection', (client) {
+    client.on('chat', (data) {
+      client.emit('fromServer', "ok 2");
+    });
+  });
+  io.on('connection', (client) {
+    client.on('chat', ( data) {
+      setState(() {
 
+messages.add(Chat.fromJson(data).content);
+     // chats=<Chat>[Chat.fromJson(data),...chats];
+      });
+
+      client.emit('fromServer', "ok");
+    });
+  });
+  io.listen(3000);
+  socketCh = socket_io.io(
+      "http://localhost:3000",
+      socket_io.OptionBuilder()
+          .setTransports(['websocket'])
+          .enableAutoConnect()
+          .build());
+
+  socketCh.onConnect((_) => Logger().i('connected'));
+  socketCh.onDisconnect((_) => Logger().e('disconnected'));
+}
   void sendMessage() {
     if (messageController.text.isNotEmpty) {
-      final chat = Chat(content: messageController.text, time: DateTime.now());
-      socketCh.emit('chat', chat.toJson());
-      socketCh.emit('chat', messageController.text);
-      socketCh.emitWithAck('chat', 'init', ack: (data) {
-        if (data != null) {
-        } else {}
-      });
+      Chat chat = Chat(content: messageController.text, time: DateTime.now());
+      socketCh.emit('chat',  chat );
+
+
       messageController.clear();
     }
   }
@@ -109,10 +102,10 @@ class _MyHomePageState extends State<MyHomePage> {
           children: <Widget>[
             Expanded(
               child: ListView.builder(
-                itemCount: chats.length,
+                itemCount: messages.length,
                 itemBuilder: (context, index) {
                   return ListTile(
-                    title: Text(chats[index].content),
+                    title: Text(messages[index]),
                   );
                 },
               ),
@@ -132,33 +125,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   IconButton(
                     icon: Icon(Icons.send),
                     onPressed: () {
-                      showDialog(
-                          context: context,
-                          builder: (BuildContext context) {
-                            return AlertDialog(
-                              title: Text('Send Message'),
-                              content: TextField(
-                                controller: messageController,
-                                decoration: InputDecoration(
-                                    hintText: 'Enter your message...'),
-                              ),
-                              actions: <Widget>[
-                                TextButton(
-                                  child: Text('Send'),
-                                  onPressed: () {
-                                    sendMessage();
-                                    Navigator.of(context).pop();
-                                  },
-                                ),
-                                TextButton(
-                                  child: Text('Cancel'),
-                                  onPressed: () {
-                                    Navigator.of(context).pop();
-                                  },
-                                ),
-                              ],
-                            );
-                          });
+                      sendMessage();
                     },
                   ),
                 ],

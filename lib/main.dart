@@ -56,7 +56,7 @@ void createSocketConnection(){
       setState(() {
 
 messages.add(Chat.fromJson(data).content);
-     // chats=<Chat>[Chat.fromJson(data),...chats];
+
       });
 
       client.emit('fromServer', "ok");

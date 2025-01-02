@@ -36,48 +36,47 @@ class _MyHomePageState extends State<MyHomePage> {
   late socket_io.Socket socketCh;
   TextEditingController messageController = TextEditingController();
 
-  List<Chat> chats = [] ;
-List<String> messages=[];
+  List<Chat> chats = [];
+  List<String> messages = [];
   @override
   void initState() {
     super.initState();
-   createSocketConnection();
+    createSocketConnection();
   }
-void createSocketConnection(){
-  var io = Server();
-  var nsp = io.of('/some');
-  nsp.on('connection', (client) {
-    client.on('chat', (data) {
-      client.emit('fromServer', "ok 2");
-    });
-  });
-  io.on('connection', (client) {
-    client.on('chat', ( data) {
-      setState(() {
 
-messages.add(Chat.fromJson(data).content);
-
+  void createSocketConnection() {
+    var io = Server();
+    var nsp = io.of('/some');
+    nsp.on('connection', (client) {
+      client.on('chat', (data) {
+        client.emit('fromServer', "ok 2");
       });
-
-      client.emit('fromServer', "ok");
     });
-  });
-  io.listen(3000);
-  socketCh = socket_io.io(
-      "http://localhost:3000",
-      socket_io.OptionBuilder()
-          .setTransports(['websocket'])
-          .enableAutoConnect()
-          .build());
+    io.on('connection', (client) {
+      client.on('chat', (data) {
+        setState(() {
+          messages.add(Chat.fromJson(data).content);
+        });
 
-  socketCh.onConnect((_) => Logger().i('connected'));
-  socketCh.onDisconnect((_) => Logger().e('disconnected'));
-}
+        client.emit('fromServer', "ok");
+      });
+    });
+    io.listen(3000);
+    socketCh = socket_io.io(
+        "http://localhost:3000",
+        socket_io.OptionBuilder()
+            .setTransports(['websocket'])
+            .enableAutoConnect()
+            .build());
+
+    socketCh.onConnect((_) => Logger().i('connected'));
+    socketCh.onDisconnect((_) => Logger().e('disconnected'));
+  }
+
   void sendMessage() {
     if (messageController.text.isNotEmpty) {
       Chat chat = Chat(content: messageController.text, time: DateTime.now());
-      socketCh.emit('chat',  chat );
-
+      socketCh.emit('chat', chat);
 
       messageController.clear();
     }
@@ -122,12 +121,7 @@ messages.add(Chat.fromJson(data).content);
                       ),
                     ),
                   ),
-                  IconButton(
-                    icon: Icon(Icons.send),
-                    onPressed: () {
-                      sendMessage();
-                    },
-                  ),
+                  IconButton(icon: Icon(Icons.send), onPressed: sendMessage),
                 ],
               ),
             ),

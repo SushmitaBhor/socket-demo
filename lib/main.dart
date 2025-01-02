@@ -35,7 +35,7 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   late socket_io.Socket socketCh;
   TextEditingController messageController = TextEditingController();
-
+  var io = Server();
   List<Chat> chats = [];
   List<String> messages = [];
   @override
@@ -44,14 +44,13 @@ class _MyHomePageState extends State<MyHomePage> {
     createSocketConnection();
   }
 
-  void createSocketConnection() {
-    var io = Server();
-    var nsp = io.of('/some');
-    nsp.on('connection', (client) {
-      client.on('chat', (data) {
-        client.emit('fromServer', "ok 2");
-      });
-    });
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    listenChat();
+  }
+
+  void listenChat() {
     io.on('connection', (client) {
       client.on('chat', (data) {
         setState(() {
@@ -61,6 +60,16 @@ class _MyHomePageState extends State<MyHomePage> {
         client.emit('fromServer', "ok");
       });
     });
+  }
+
+  void createSocketConnection() {
+    var nsp = io.of('/some');
+    nsp.on('connection', (client) {
+      client.on('chat', (data) {
+        client.emit('fromServer', "ok 2");
+      });
+    });
+
     io.listen(3000);
     socketCh = socket_io.io(
         "http://localhost:3000",
